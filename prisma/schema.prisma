@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Seat model - represents a physical seat in the study cafe
+model Seat {
+  id               String    @id // e.g., "A1", "B12"
+  name             String    // Display name
+  row              String    // Row identifier (A, B, C...)
+  col              Int       // Column number
+  status           String    @default("AVAILABLE") // AVAILABLE, OCCUPIED, EXPIRED, DISABLED
+  currentSessionId String?   @unique
+  currentSession   Session?  @relation(fields: [currentSessionId], references: [id])
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// Locker model - represents a physical locker
+model Locker {
+  id               String    @id // e.g., "001", "032"
+  name             String    // Display name or number
+  status           String    @default("AVAILABLE") // AVAILABLE, OCCUPIED, DISABLED
+  linkedSeatId     String?   // Optional seat linkage
+  currentSessionId String?   @unique
+  currentSession   Session?  @relation(fields: [currentSessionId], references: [id])
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// Product model - represents a time package (1h, 2h, 3h, daily)
+model Product {
+  id          String    @id @default(uuid())
+  name        String    // e.g., "1 Hour Pass"
+  durationMin Int       // Duration in minutes
+  price       Int       // Price in won
+  isDefault   Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0) // For display ordering
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  sessions    Session[]
+}
+
+// Session model - represents an active or past usage session
+model Session {
+  id           String    @id @default(uuid())
+  resourceType String    // "SEAT" or "LOCKER"
+  resourceId   String    // Seat or Locker ID
+  userTag      String    // Phone last 4 digits for identification
+  productId    String?
+  product      Product?  @relation(fields: [productId], references: [id])
+  startAt      DateTime  @default(now())
+  endAt        DateTime? // Calculated based on product duration
+  status       String    @default("ACTIVE") // ACTIVE, ENDED, EXPIRED
+  endedReason  String?   // CHECKOUT, FORCE_END, EXPIRED, RELEASED
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  seat         Seat?
+  locker       Locker?
+}
+
+// EventLog model - audit trail for all actions
+model EventLog {
+  id        String   @id @default(uuid())
+  type      String   // CHECK_IN, CHECK_OUT, EXTEND, FORCE_END, ASSIGN, RELEASE
+  payload   String   // JSON stringified data
+  actorRole String   // CUSTOMER, ADMIN
+  createdAt DateTime @default(now())
+}
+
+// AppConfig model - key/value settings storage
+model AppConfig {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

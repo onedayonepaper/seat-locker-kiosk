@@ -20,6 +20,34 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Operations
+
+### Environment
+
+- `DATABASE_URL` (optional): SQLite path, default `file:./dev.db`
+
+### Database
+
+- Schema sync: `npx prisma db push`
+- Seed data: `npm run db:seed`
+- Backup (manual):
+  - `cp dev.db backups/dev-YYYYMMDD.db`
+
+### Admin Passcode
+
+- Default admin passcode: `1234`
+- Change it in `/settings` → 정책 탭 → 관리자 비밀번호
+
+### Log Retention
+
+- `/settings` → 정책 탭 → 로그 보관 기간
+- `0` disables auto cleanup
+
+### Deployment Notes
+
+- SQLite is local to the server. For Vercel, consider a hosted DB or on-prem Node deployment.
+- Use `npm run build` then `npm run start` for production.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
