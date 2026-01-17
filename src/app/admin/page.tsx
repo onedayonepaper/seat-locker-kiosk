@@ -21,6 +21,11 @@ export default function AdminDashboard() {
   const { data: logs, isLoading: logsLoading } = useEventLogs(logSearch, 60);
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
 
+  // 모든 데이터 추출 (hooks 규칙 준수를 위해 조건부 return 전에 선언)
+  const seats = data?.seats || [];
+  const lockers = data?.lockers || [];
+  const sessions = data?.sessions || [];
+
   const parsedLogs = useMemo(() => {
     return logs?.map((log) => {
       try {
@@ -34,39 +39,6 @@ export default function AdminDashboard() {
   const selectedLog = useMemo(() => {
     return parsedLogs?.find((log) => log.id === selectedLogId) ?? null;
   }, [parsedLogs, selectedLogId]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto mb-4" />
-          <p className="text-gray-600">데이터 로딩 중...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <p className="text-gray-900 font-medium mb-2">데이터 로딩 실패</p>
-          <p className="text-gray-500 mb-4">{error.message}</p>
-          <button
-            onClick={() => refetch()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            다시 시도
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const seats = data?.seats || [];
-  const lockers = data?.lockers || [];
-  const sessions = data?.sessions || [];
 
   const filteredSeats = useMemo(() => {
     return seats.filter((seat) => {
@@ -97,6 +69,37 @@ export default function AdminDashboard() {
       );
     });
   }, [lockers, lockerFilter, searchTerm]);
+
+  // 로딩 상태 처리
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto mb-4" />
+          <p className="text-gray-600">데이터 로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태 처리
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <p className="text-gray-900 font-medium mb-2">데이터 로딩 실패</p>
+          <p className="text-gray-500 mb-4">{error.message}</p>
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate stats
   const stats = {

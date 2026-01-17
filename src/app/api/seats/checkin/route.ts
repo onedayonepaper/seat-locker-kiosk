@@ -1,29 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { validateUserTag } from '@/lib/qr-parser';
+import { validateRequest, checkInSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
 // POST /api/seats/checkin - Start a seat session
 export async function POST(request: NextRequest) {
   try {
-    const { seatId, productId, userTag } = await request.json();
+    const body = await request.json();
 
-    // Validate required fields
-    if (!seatId || !productId || !userTag) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields: seatId, productId, userTag' },
-        { status: 400 }
-      );
+    // Validate input with Zod
+    const validation = validateRequest(checkInSchema, body);
+    if (!validation.success) {
+      return validation.response;
     }
 
-    // Validate userTag format (4 digits)
-    if (!validateUserTag(userTag)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid user tag. Please enter 4 digits.' },
-        { status: 400 }
-      );
-    }
+    const { seatId, productId, userTag } = validation.data;
 
     // Check seat exists and is available
     const seat = await db.seat.findUnique({

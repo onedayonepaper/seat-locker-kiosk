@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const seats = [];
+    const seats: { id: string; name: string; row: string; col: number; status: string }[] = [];
     for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
       const row = getRowLabel(rowIndex);
       for (let col = 1; col <= colCount; col += 1) {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const lockers = [];
+    const lockers: { id: string; name: string; status: string }[] = [];
     for (let i = 1; i <= lockerCount; i += 1) {
       const id = generateLockerId(i);
       lockers.push({

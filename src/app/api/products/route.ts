@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { validateRequest, productCreateSchema, productUpdateSchema, productDeleteSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,24 +21,24 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching products:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch products' },
+      { success: false, error: 'Failed to fetch products', code: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }
 }
 
-// POST /api/products - Create a new product (admin only)
-export async function POST(request: Request) {
+// POST /api/products - Create a new product (admin only - protected by middleware)
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, durationMin, price, isDefault, sortOrder } = body;
 
-    if (!name || !durationMin || price === undefined) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      );
+    // Validate input with Zod
+    const validation = validateRequest(productCreateSchema, body);
+    if (!validation.success) {
+      return validation.response;
     }
+
+    const { name, durationMin, price, isDefault, sortOrder, isActive } = validation.data;
 
     // If this product is default, unset other defaults
     if (isDefault) {
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
         durationMin,
         price,
         isDefault: isDefault || false,
-        isActive: true,
+        isActive: isActive ?? true,
         sortOrder: sortOrder || 0,
       },
     });
@@ -65,22 +66,31 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error creating product:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to create product' },
+      { success: false, error: 'Failed to create product', code: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }
 }
 
-// PATCH /api/products - Update product (admin only)
+// PATCH /api/products - Update product (admin only - protected by middleware)
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, name, durationMin, price, isDefault, isActive, sortOrder } = body;
 
-    if (!id) {
+    // Validate input with Zod
+    const validation = validateRequest(productUpdateSchema, body);
+    if (!validation.success) {
+      return validation.response;
+    }
+
+    const { id, name, durationMin, price, isDefault, isActive, sortOrder } = validation.data;
+
+    // Check if product exists
+    const existing = await db.product.findUnique({ where: { id } });
+    if (!existing) {
       return NextResponse.json(
-        { success: false, error: 'Missing required field: id' },
-        { status: 400 }
+        { success: false, error: 'Product not found', code: 'NOT_FOUND' },
+        { status: 404 }
       );
     }
 
@@ -94,12 +104,12 @@ export async function PATCH(request: NextRequest) {
     const product = await db.product.update({
       where: { id },
       data: {
-        name,
-        durationMin,
-        price,
-        isDefault,
-        isActive,
-        sortOrder,
+        ...(name !== undefined && { name }),
+        ...(durationMin !== undefined && { durationMin }),
+        ...(price !== undefined && { price }),
+        ...(isDefault !== undefined && { isDefault }),
+        ...(isActive !== undefined && { isActive }),
+        ...(sortOrder !== undefined && { sortOrder }),
       },
     });
 
@@ -110,22 +120,31 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     console.error('Error updating product:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to update product' },
+      { success: false, error: 'Failed to update product', code: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }
 }
 
-// DELETE /api/products - Deactivate product (admin only)
+// DELETE /api/products - Deactivate product (admin only - protected by middleware)
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id } = body;
 
-    if (!id) {
+    // Validate input with Zod
+    const validation = validateRequest(productDeleteSchema, body);
+    if (!validation.success) {
+      return validation.response;
+    }
+
+    const { id } = validation.data;
+
+    // Check if product exists
+    const existing = await db.product.findUnique({ where: { id } });
+    if (!existing) {
       return NextResponse.json(
-        { success: false, error: 'Missing required field: id' },
-        { status: 400 }
+        { success: false, error: 'Product not found', code: 'NOT_FOUND' },
+        { status: 404 }
       );
     }
 
@@ -144,7 +163,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('Error deactivating product:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to deactivate product' },
+      { success: false, error: 'Failed to deactivate product', code: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }

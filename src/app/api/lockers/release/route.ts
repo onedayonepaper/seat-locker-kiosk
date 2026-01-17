@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { validateRequest, lockerReleaseSchema } from '@/lib/validation';
 import { validateUserTag } from '@/lib/qr-parser';
 
 export const dynamic = 'force-dynamic';
@@ -7,15 +8,15 @@ export const dynamic = 'force-dynamic';
 // POST /api/lockers/release - Release a locker
 export async function POST(request: NextRequest) {
   try {
-    const { lockerId, userTag, force } = await request.json();
+    const body = await request.json();
 
-    // Validate required fields
-    if (!lockerId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required field: lockerId' },
-        { status: 400 }
-      );
+    // Validate input with Zod
+    const validation = validateRequest(lockerReleaseSchema, body);
+    if (!validation.success) {
+      return validation.response;
     }
+
+    const { lockerId, userTag, force } = validation.data;
 
     // Check locker exists and has active session
     const locker = await db.locker.findUnique({

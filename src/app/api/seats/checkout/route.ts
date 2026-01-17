@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { validateRequest, checkOutSchema } from '@/lib/validation';
 import { validateUserTag } from '@/lib/qr-parser';
 
 export const dynamic = 'force-dynamic';
@@ -7,15 +8,15 @@ export const dynamic = 'force-dynamic';
 // POST /api/seats/checkout - End a seat session
 export async function POST(request: NextRequest) {
   try {
-    const { seatId, userTag, force } = await request.json();
+    const body = await request.json();
 
-    // Validate required fields
-    if (!seatId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required field: seatId' },
-        { status: 400 }
-      );
+    // Validate input with Zod
+    const validation = validateRequest(checkOutSchema, body);
+    if (!validation.success) {
+      return validation.response;
     }
+
+    const { seatId, userTag, force } = validation.data;
 
     // Check seat exists and has active session
     const seat = await db.seat.findUnique({

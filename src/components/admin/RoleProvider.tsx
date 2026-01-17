@@ -1,57 +1,75 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 type Role = 'ADMIN' | 'STAFF';
 
 interface RoleContextValue {
   role: Role;
+  isLoading: boolean;
+  isAuthenticated: boolean;
   setRole: (role: Role) => void;
   requestAdmin: () => Promise<boolean>;
+  logout: () => Promise<void>;
 }
 
 const RoleContext = createContext<RoleContextValue | null>(null);
-const STORAGE_KEY = 'seat-locker-role';
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRoleState] = useState<Role>('STAFF');
+  const {
+    isAuthenticated,
+    role: authRole,
+    isLoading,
+    login,
+    logout: authLogout,
+  } = useAuth();
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === 'ADMIN' || stored === 'STAFF') {
-      setRoleState(stored);
+  // Map auth state to role - default to STAFF if not authenticated
+  const role: Role = isAuthenticated && authRole ? authRole : 'STAFF';
+
+  const setRole = async (next: Role) => {
+    if (next === 'ADMIN' && !isAuthenticated) {
+      // Need to login first
+      await requestAdmin();
+    } else if (next === 'STAFF' && isAuthenticated) {
+      // Logout
+      await authLogout();
     }
-  }, []);
-
-  const setRole = (next: Role) => {
-    setRoleState(next);
-    window.localStorage.setItem(STORAGE_KEY, next);
   };
 
-  const requestAdmin = async () => {
+  const requestAdmin = async (): Promise<boolean> => {
     const passcode = window.prompt('관리자 비밀번호를 입력하세요');
     if (!passcode) return false;
-    const response = await fetch('/api/settings/verify-admin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ passcode }),
-    });
-    const result = await response.json();
-    if (result?.data?.valid) {
-      setRole('ADMIN');
+
+    try {
+      await login(passcode);
       return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '로그인에 실패했습니다';
+      window.alert(message === 'Invalid passcode' ? '비밀번호가 올바르지 않습니다' : message);
+      return false;
     }
-    window.alert('비밀번호가 올바르지 않습니다');
-    return false;
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      await authLogout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   const value = useMemo(
     () => ({
       role,
+      isLoading,
+      isAuthenticated,
       setRole,
       requestAdmin,
+      logout,
     }),
-    [role]
+    [role, isLoading, isAuthenticated]
   );
 
   return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>;

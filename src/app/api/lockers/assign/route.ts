@@ -1,29 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { validateUserTag } from '@/lib/qr-parser';
+import { validateRequest, lockerAssignSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
 // POST /api/lockers/assign - Assign a locker
 export async function POST(request: NextRequest) {
   try {
-    const { lockerId, userTag, linkedSeatSessionId } = await request.json();
+    const body = await request.json();
 
-    // Validate required fields
-    if (!lockerId || !userTag) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields: lockerId, userTag' },
-        { status: 400 }
-      );
+    // Validate input with Zod
+    const validation = validateRequest(lockerAssignSchema, body);
+    if (!validation.success) {
+      return validation.response;
     }
 
-    // Validate userTag format
-    if (!validateUserTag(userTag)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid user tag. Please enter 4 digits.' },
-        { status: 400 }
-      );
-    }
+    const { lockerId, userTag, linkedSeatSessionId } = validation.data;
 
     // Check locker exists and is available
     const locker = await db.locker.findUnique({

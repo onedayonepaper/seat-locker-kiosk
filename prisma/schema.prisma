@@ -18,6 +18,7 @@ model Seat {
   status           String    @default("AVAILABLE") // AVAILABLE, OCCUPIED, EXPIRED, DISABLED
   currentSessionId String?   @unique
   currentSession   Session?  @relation(fields: [currentSessionId], references: [id])
+  version          Int       @default(0) // For optimistic locking
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }
@@ -30,6 +31,7 @@ model Locker {
   linkedSeatId     String?   // Optional seat linkage
   currentSessionId String?   @unique
   currentSession   Session?  @relation(fields: [currentSessionId], references: [id])
+  version          Int       @default(0) // For optimistic locking
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }
